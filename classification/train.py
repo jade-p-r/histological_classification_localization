@@ -1,18 +1,15 @@
 from sklearn import svm
 from sklearn.model_selection import StratifiedKFold
-from utils import *
+from classif_utils.utils import *
 import pickle
 import sys
 from typing import List
 import logging
-
+import os
+from classif_utils import config
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-
-train_dir = "train/"
-colors = ("blue", "green", "red")
-channel_ids = (0, 1, 2)
 
 
 def dhash(image, hashSize=8):
@@ -66,26 +63,24 @@ def duplicated_ids(directory: str) -> List[str]:
     ids_to_remove = [list(im_dict)[0] for im_dict in res]
     return ids_to_remove
 
-def train():
+
+def train(folds=5):
     """
 
     :return: none, trained model saved as pickle file locally under config filemae
     :rtype: none
     """
+    train_dir = config.IMAGES_PATH
     classes = os.listdir(train_dir)
-    train_im_list = os.listdir(os.path.join(train_dir, classes[0]))
     train_df = pd.DataFrame()
-    train_dic = {}
 
     train_df = add_metrics(train_df, classes, train_dir, W)
-    #correlated_cols = select_correlated_features(train_df)
-    #train_df = train_df.drop(correlated_cols, axis=1, inplace=True)
     ids_to_remove = duplicated_ids(train_dir)
     train_df = train_df.drop(train_df[train_df.image_name.isin(ids_to_remove)].index)
     y = target(train_df)
     scaled_X = preprocessing(train_df)
 
-    k_folds = 5
+    k_folds = folds
     kfold = StratifiedKFold(n_splits=k_folds, shuffle=True)
 
     for train_index, val_index in kfold.split(scaled_X, y):
@@ -94,7 +89,7 @@ def train():
         clf = svm.SVC(kernel='linear')
         clf = clf.fit(X_train, y_train)
         logger.debug(clf.score(X_val, y_val))
-    filename = 'first_model.sav'
+    filename = config.MODEL_PATH
     pickle.dump(clf, open(filename, 'wb'))
 
 

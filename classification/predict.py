@@ -1,13 +1,12 @@
 import pickle
-from utils import *
+from classif_utils.utils import *
 import logging
 import sys
-
+from classif_utils import config
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-test_dir = "test/"
 filename = "first_model.sav"
 
 
@@ -60,6 +59,7 @@ def predict():
     :return: prediction loop over directory of test images
     :rtype:
     """
+    test_dir = config.TEST_PATH
     classes = os.listdir(test_dir)
     test_df = pd.DataFrame()
     test_df = add_metrics(test_df, classes, test_dir, W)
@@ -71,7 +71,7 @@ def predict():
     y_pred = model.predict(scaled_X)
 
     test_df['predictions'] = pd.Series(y_pred)
-    test_df.to_csv('output/predictions.csv')
+    test_df.to_csv(config.PREDICTIONS_PATH)
 
     precision, recall, fn, fp, tn, tp = precision_recall(test_df)
 
