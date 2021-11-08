@@ -1,7 +1,6 @@
 from my_utils import config
 from torchvision import transforms
 import argparse
-import pickle
 import torch
 import cv2
 import json
@@ -12,38 +11,45 @@ import logging
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
+from my_utils import config
 
 transforms = transforms.Compose([
 	transforms.ToPILImage(),
 	transforms.ToTensor(),
 ])
 
-def get_transform(train):
-
-    transforms = []
-    transforms.append(T.ToTensor())
-    if train:
-        transforms.append(T.RandomHorizontalFlip(0.5))
-
-    return T.Compose(transforms)
-
 
 def np_vec_no_jit_iou(bboxes1, bboxes2):
+	"""
 
-    x11, y11, x12, y12 = np.split(bboxes1, 4, axis=1)
-    x21, y21, x22, y22 = np.split(bboxes2, 4, axis=1)
-    xA = np.maximum(x11, np.transpose(x21))
-    yA = np.maximum(y11, np.transpose(y21))
-    xB = np.minimum(x12, np.transpose(x22))
-    yB = np.minimum(y12, np.transpose(y22))
-    interArea = np.maximum((xB - xA + 1), 0) * np.maximum((yB - yA + 1), 0)
-    boxAArea = (x12 - x11 + 1) * (y12 - y11 + 1)
-    boxBArea = (x22 - x21 + 1) * (y22 - y21 + 1)
-    iou = interArea / (boxAArea + np.transpose(boxBArea) - interArea)
-    return iou
+	:param bboxes1:
+	:type bboxes1:
+	:param bboxes2:
+	:type bboxes2:
+	:return: value of iou for each pair
+	:rtype: array of iou
+	"""
+	x11, y11, x12, y12 = np.split(bboxes1, 4, axis=1)
+	x21, y21, x22, y22 = np.split(bboxes2, 4, axis=1)
+	xA = np.maximum(x11, np.transpose(x21))
+	yA = np.maximum(y11, np.transpose(y21))
+	xB = np.minimum(x12, np.transpose(x22))
+	yB = np.minimum(y12, np.transpose(y22))
+	interArea = np.maximum((xB - xA + 1), 0) * np.maximum((yB - yA + 1), 0)
+	boxAArea = (x12 - x11 + 1) * (y12 - y11 + 1)
+	boxBArea = (x22 - x21 + 1) * (y22 - y21 + 1)
+	iou = interArea / (boxAArea + np.transpose(boxBArea) - interArea)
+	return iou
+
 
 def preprocess(image: np.ndarray) -> np.ndarray:
+	"""
 
+	:param image:
+	:type image:
+	:return: preprocessed image
+	:rtype:
+	"""
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 	image = image.transpose((2, 0, 1))
 	image = torch.from_numpy(image)
@@ -53,6 +59,13 @@ def preprocess(image: np.ndarray) -> np.ndarray:
 
 
 def select_boxes(prediction) -> np.ndarray:
+	"""
+
+	:param prediction:
+	:type prediction:
+	:return: select boxes by threshold on confidence score
+	:rtype:
+	"""
 	boxes = prediction[0]['boxes'].to('cpu').detach().numpy()
 	pred_score = list(prediction[0]['scores'].cpu().detach().numpy())
 	try:
@@ -63,7 +76,39 @@ def select_boxes(prediction) -> np.ndarray:
 	return boxes
 
 
+def pair_boxes(gt_boxes, pred_boxes):
+	"""
+	Appair ground truth and predicted boxes 1-1 using Hungarian algorithm
+	:param gt_boxes: array
+	:type gt_boxes: bytearray
+	:param pred_boxes:
+	:type pred_boxes:
+	:return: indexes of ground truth and predicted boxes appaired
+	:rtype: array, array
+	"""
+	iou = np_vec_no_jit_iou(np.asarray(gt_boxes), np.asarray(pred_boxes))
+	gt_index = [i for i in range(len(gt_boxes))]
+	pred_index = [i for i in range(len(pred_boxes))]
+	iou = pd.DataFrame(iou, index=list(gt_index), columns=list(pred_index))
+	iou_NoUnmatched = iou.loc[iou.sum(axis=1) > 0, iou.sum(axis=0) > 0]
+	row_ind, col_ind = linear_sum_assignment(1 - iou_NoUnmatched.values)
+	return row_ind, col_ind
+
+
 def plot_images(pred_boxes, gt_boxes, im, im_bis):
+	"""
+
+	:param pred_boxes:
+	:type pred_boxes:
+	:param gt_boxes:
+	:type gt_boxes:
+	:param im:
+	:type im:
+	:param im_bis:
+	:type im_bis:
+	:return: cv2 plot of stacked images ground truth and predicted images
+	:rtype:
+	"""
 	for [startX, startY, endX, endY] in pred_boxes:
 		cv2.rectangle(im_bis, (startX, startY), (endX, endY), (0, 0, 255), 2)
 	for box in gt_boxes:
@@ -78,8 +123,17 @@ def plot_images(pred_boxes, gt_boxes, im, im_bis):
 
 
 def predict(args, plot=False):
+	"""
 
-	test_boxes = json.load(open("boxes_test.json"))
+	:param args:
+	:type args:
+	:param plot:
+	:type plot:
+	:return: prediction loop over test set
+	:rtype:
+	"""
+
+	test_boxes = json.load(open(config.ANNOTS_TEST_PATH))
 	imagePaths = os.listdir(args["input"])
 
 	logging.info("[INFO] loading object detector...")
@@ -100,12 +154,8 @@ def predict(args, plot=False):
 
 		gt_boxes = test_boxes[imagePath]
 
-		iou = np_vec_no_jit_iou(np.asarray(gt_boxes), np.asarray(pred_boxes))
-		gt_index = [i for i in range(len(gt_boxes))]
-		pred_index = [i for i in range(len(pred_boxes))]
-		iou = pd.DataFrame(iou, index=list(gt_index), columns=list(pred_index))
-		iou_NoUnmatched = iou.loc[iou.sum(axis=1) > 0, iou.sum(axis=0) > 0]
-		row_ind, col_ind = linear_sum_assignment(1 - iou_NoUnmatched.values)
+		row_ind, col_ind = pair_boxes(gt_boxes, pred_boxes)
+
 		fn = len(gt_boxes)-len(row_ind)
 		tp = len(row_ind)
 		fp = len(pred_boxes)-len(col_ind)
@@ -116,7 +166,7 @@ def predict(args, plot=False):
 
 		(h, w) = orig.shape[:2]
 		if plot:
-			plot_images()
+			plot_images(pred_boxes, gt_boxes, orig, orig_bis)
 
 	sum_tp = np.sum(all_tp)
 	sum_fn = np.sum(all_fn)
@@ -136,3 +186,11 @@ if __name__ == "__main__":
 	args = vars(ap.parse_args())
 
 	predict(args)
+
+"""
+The following performance was achieved: 
+precision is 0.726
+recall is 0.581
+F1 score is 0.646
+
+"""

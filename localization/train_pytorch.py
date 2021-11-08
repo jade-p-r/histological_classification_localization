@@ -12,13 +12,14 @@ import json
 from my_utils import config
 import random
 
+
 def create_model():
     """
     Creates Pytorch model from pretrained model Faster RCNN - Resent 50
     :return: torch pretrained model
     :rtype: torch model
     """
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True, box_detections_per_img=10000)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True, box_detections_per_img=12000)
     num_classes = 2  # 1 class (nuclei) + background
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     # replace the pre-trained head with a new one
@@ -27,18 +28,27 @@ def create_model():
 
 
 def get_transform(train):
-    transforms = []
-    transforms.append(T.ToTensor())
+    """
+
+    :param train:
+    :type train:
+    :return: composition of transforms to apply for training set
+    :rtype:
+    """
+    transforms = [T.ToTensor()]
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
-        #transforms.append(T.Normalize(mean=config.MEAN, std=config.STD))
-
     return T.Compose(transforms)
 
 
 def main():
-    images = os.listdir("train")
-    train_boxes = json.load(open("boxes_train.json"))
+    """
+    Perform training on training set
+    :return: None
+    :rtype:
+    """
+    images = os.listdir(config.IMAGES_PATH)
+    train_boxes = json.load(open(config.ANNOTS_PATH))
     train_boxes_nonempty = {k: v for k, v in train_boxes.items() if v}
     train_images_list = [image for image in images if image in train_boxes_nonempty.keys()]
     random.shuffle(train_images_list)
@@ -46,8 +56,8 @@ def main():
     train_images_list = [image for image in train_images_list if not image in val_images_list]
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    dataset = CustomTensorDataset('train', train_images_list, 'boxes_train.json', get_transform(train=True))
-    dataset_val = CustomTensorDataset('train', val_images_list, 'boxes_train.json', get_transform(train=False))
+    dataset = CustomTensorDataset(config.IMAGES_PATH, train_images_list, config.ANNOTS_PATH, get_transform(train=True))
+    dataset_val = CustomTensorDataset(config.IMAGES_PATH, val_images_list, config.ANNOTS_PATH, get_transform(train=False))
 
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, shuffle=True, num_workers=os.cpu_count(),
@@ -74,8 +84,9 @@ def main():
         train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
         lr_scheduler.step()
         evaluate(model, data_loader_val, device=device)
-        torch.save(model, "output/pyt_detector_3.pth")
+        torch.save(model, config.MODEL_PATH)
         torch.cuda.empty_cache()
+    return
 
 
 if __name__ == "__main__":
