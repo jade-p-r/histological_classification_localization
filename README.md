@@ -71,13 +71,13 @@ Our model achieves a Precision of 72%, Recall of 58% and F1-score of 64% on the 
 
 A few examples of detection below :
 
-![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021.png?raw=true)
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/main/screens/Output_screenshot_08.11.2021.png?raw=true)
 
 
-![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021_1.png?raw=true)
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/main/screens/Output_screenshot_08.11.2021_1.png?raw=true)
 
 
-![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021_2.png?raw=true)
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/main/screens/Output_screenshot_08.11.2021_2.png?raw=true)
 
 
-![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021_3.png?raw=true)
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/main/screens/Output_screenshot_08.11.2021_3.png?raw=true)
