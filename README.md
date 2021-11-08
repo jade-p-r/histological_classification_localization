@@ -3,7 +3,7 @@
 This repository gathers my work for the two tasks given for the technical interview at Primaa.
 
 
-##Installation
+## Installation
 If needed, create a custom virtual environment 
 
 Clone the repo using git clone 
@@ -12,6 +12,7 @@ cd into current directory
 
 Install the required packages using pip3 install requirements.txt
 
+To run torchvision for nuclei detection, you also need to install pycocotools, for example via : pip install git+https://github.com/philferriere/cocoapi.git#egg=pycocotools^&subdirectory=PythonAPI
 
 The trained models for both tasks have been sent to you via google drive. The associated data also. please unzip it as the following arborescence :
 
@@ -19,7 +20,7 @@ The trained models for both tasks have been sent to you via google drive. The as
 
 - localization/train/001.png
 
-##Input data
+## Input data
 The given data separates data in train and test sets, the test set being 10% of the size of the training set. We perform validation on a subset from the training set of 10%
 ## Nuclei Images Classification
 The following assumption has been made : there are some mistakes in image labelling, notably in the test set (ie no_nuclei_120.png).
@@ -38,10 +39,10 @@ To train the model, run :
 (if not in classif directory) cd classification
 python3 train.py
 
-###Inference
+### Inference
 To run predictions on the test set, run:
 (if not in classif directory) cd classification
-python3 predict
+python3 predict.py
 
 Inference can display images which were wrongly classified, namely false positives and false negatives.
 We chose to assess precision and recall as performance metrics.
@@ -67,3 +68,16 @@ To run prediction metrics on the test , run:
 python3 predict.py --input=test
 
 Our model achieves a Precision of 72%, Recall of 58% and F1-score of 64% on the test set.
+
+A few examples of detection below :
+
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021.png?raw=true)
+
+
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021_1.png?raw=true)
+
+
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021_2.png?raw=true)
+
+
+![alt text](https://github.com/jade-p-r/primaa_submission/blob/master/Output_screenshot_08.11.2021_3.png?raw=true)
