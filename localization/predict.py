@@ -12,6 +12,12 @@ import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 from my_utils import config
+import sys
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+
 
 transforms = transforms.Compose([
 	transforms.ToPILImage(),
@@ -174,9 +180,9 @@ def predict(args, plot=False):
 	precision = sum_tp/(sum_fp+sum_tp)
 	recall = sum_tp/(sum_fn+sum_tp)
 	f1 = 2*recall*precision/(recall+precision)
-	print("precision is {}".format(round(precision, 3)))
-	print("recall is {}".format(round(recall, 3)))
-	print("F1 score is {}".format(round(f1, 3)))
+	logger.info("precision is {}".format(round(precision, 3)))
+	logger.info("recall is {}".format(round(recall, 3)))
+	logger.info("F1 score is {}".format(round(f1, 3)))
 
 
 if __name__ == "__main__":
