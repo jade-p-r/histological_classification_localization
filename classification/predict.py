@@ -7,7 +7,6 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-filename = "first_model.sav"
 
 
 def load_model(filename: np.ndarray):
@@ -47,7 +46,7 @@ def plot_predictions(df: pd.DataFrame) -> None:
 
     for _, row in df.iterrows():
         im_name = row['image_name']
-        im_path = os.path.join(test_dir, im_class(row['nuclei']), im_name)
+        im_path = os.path.join(config.TEST_PATH, im_class(row['nuclei']), im_name)
         cv2.imshow(im_name, cv2.imread(im_path))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -60,14 +59,16 @@ def predict():
     :rtype:
     """
     test_dir = config.TEST_PATH
+    features_list = config.FEATURES
+
     classes = os.listdir(test_dir)
     test_df = pd.DataFrame()
-    test_df = add_metrics(test_df, classes, test_dir, W)
+    test_df = build_features(features_list, test_df, classes, test_dir)
 
     y = target(test_df)
     scaled_X = preprocessing(test_df)
 
-    model = load_model(filename)
+    model = load_model(config.MODEL_PATH)
     y_pred = model.predict(scaled_X)
 
     test_df['predictions'] = pd.Series(y_pred)

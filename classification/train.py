@@ -7,6 +7,7 @@ from typing import List
 import logging
 import os
 from classif_utils import config
+from classif_utils.models import Model
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -28,7 +29,7 @@ def dhash(image, hashSize=8):
     return sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
 
 
-def load_images(image_dir: str) -> List[float]:
+def load_images(image_dir: str, train_dir: str) -> List[float]:
     """
 
     :param image_dir: path to image dir
@@ -55,7 +56,7 @@ def duplicated_ids(directory: str) -> List[str]:
     :return: list of duplicated ids
     :rtype:
     """
-    train_hashes = load_images(directory)
+    train_hashes = load_images(directory, config.IMAGES_PATH)
     dictB = {}
     for key, value in train_hashes.items():
         dictB.setdefault(value, set()).add(key)
@@ -74,7 +75,7 @@ def train(folds=5):
     classes = os.listdir(train_dir)
     train_df = pd.DataFrame()
 
-    train_df = add_metrics(train_df, classes, train_dir, W)
+    train_df = build_features('hist', train_df, classes, train_dir)
     ids_to_remove = duplicated_ids(train_dir)
     train_df = train_df.drop(train_df[train_df.image_name.isin(ids_to_remove)].index)
     y = target(train_df)
@@ -86,9 +87,9 @@ def train(folds=5):
     for train_index, val_index in kfold.split(scaled_X, y):
         X_train, X_val = scaled_X[train_index], scaled_X[val_index]
         y_train, y_val = y[train_index], y[val_index]
-        clf = svm.SVC(kernel='linear')
-        clf = clf.fit(X_train, y_train)
-        logger.debug(clf.score(X_val, y_val))
+        clf = Model(model_type='svc')
+        clf.fit(X_train, y_train)
+        logger.debug(clf.score(clf.predict(X_val), y_val))
     filename = config.MODEL_PATH
     pickle.dump(clf, open(filename, 'wb'))
 
