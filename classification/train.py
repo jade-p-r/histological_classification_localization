@@ -1,8 +1,10 @@
+# runs using  python3 train.py -f hist
 from sklearn.model_selection import StratifiedKFold
 from classif_utils.utils import *
 import pickle
 import sys
 import logging
+import argparse
 import os
 from classif_utils import config
 from classif_utils.models import Model
@@ -11,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def train(folds=5):
+def train(args, folds=5):
     """
     Training loop using k fold cross validation - we used k=5
     :return: none, trained model saved as pickle file locally under config filemae
@@ -21,7 +23,7 @@ def train(folds=5):
     classes = os.listdir(train_dir)
     train_df = pd.DataFrame()
 
-    train_df = build_features('hist', train_df, classes, train_dir)
+    train_df = build_features(args['features'], train_df, classes, train_dir)
     ids_to_remove = duplicated_ids(train_dir)
     train_df = train_df.drop(train_df[train_df.image_name.isin(ids_to_remove)].index)
     y = target(train_df)
@@ -41,4 +43,5 @@ def train(folds=5):
 
 
 if __name__ == "__main__":
-    train()
+    args = argument_parser()
+    train(args)

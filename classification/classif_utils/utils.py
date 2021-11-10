@@ -6,10 +6,7 @@ import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-import scipy as sp
-import skimage.io
-import skimage.measure
-import skimage.color
+import argparse
 from typing import List
 from .models import ColorImageFeatures
 from . import config
@@ -33,6 +30,20 @@ W = np.array([stainColorMap[stain_1],
               stainColorMap[stain_3]]).T
 
 
+def argument_parser():
+    """
+    Returns the arguments given during script launch
+    :return: parsed arguments
+    :rtype: str
+    """
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-f", "--features", required=True,
+                    help="list of features to train with - must contain hist for histogram, stain for stain images, "
+                         "laplacian for laplacian, watershied_1 and watershed_2 for two methods of calculating the number of nuclei")
+    args = vars(ap.parse_args())
+    return args
+
+
 def load_images(image_dir: str, train_dir: str) -> List[float]:
     """
     Loads images from a given directory following train/test images structure
@@ -48,7 +59,7 @@ def load_images(image_dir: str, train_dir: str) -> List[float]:
         for image in tqdm(image_list):
             image_path = os.path.join(image_dir, sub_dir, image)
             im = cv2.imread(image_path)
-            dhashes[image] = ColorImageFeatures().dhash(im)
+            dhashes[image] = ColorImageFeatures(im).dhash()
     return dhashes
 
 
