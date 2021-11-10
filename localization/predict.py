@@ -13,6 +13,7 @@ from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 from my_utils import config
 import sys
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -27,11 +28,11 @@ transforms = transforms.Compose([
 
 def np_vec_no_jit_iou(bboxes1, bboxes2):
 	"""
-
-	:param bboxes1:
-	:type bboxes1:
-	:param bboxes2:
-	:type bboxes2:
+	Computes the vectorized IOU of two arrays of boxes of the same length
+	:param bboxes1: array of bounding boxes
+	:type bboxes1: bytearray
+	:param bboxes2:array of bounding boxes
+	:type bboxes2:bytearray
 	:return: value of iou for each pair
 	:rtype: array of iou
 	"""
@@ -50,11 +51,11 @@ def np_vec_no_jit_iou(bboxes1, bboxes2):
 
 def preprocess(image: np.ndarray) -> np.ndarray:
 	"""
-
-	:param image:
-	:type image:
+	Performs image preprocessing prior to  inference
+	:param image: input image
+	:type image:bytearray
 	:return: preprocessed image
-	:rtype:
+	:rtype:bytearray
 	"""
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 	image = image.transpose((2, 0, 1))
@@ -64,18 +65,18 @@ def preprocess(image: np.ndarray) -> np.ndarray:
 	return image
 
 
-def select_boxes(prediction) -> np.ndarray:
+def select_boxes(prediction, threshold=0.5) -> np.ndarray:
 	"""
-
-	:param prediction:
-	:type prediction:
+	Filters predicted bounding boxes having a confidence score over a certain threshold
+	:param prediction: array of predicted bounding boxes
+	:type prediction:bytearray
 	:return: select boxes by threshold on confidence score
-	:rtype:
+	:rtype:bytearray
 	"""
 	boxes = prediction[0]['boxes'].to('cpu').detach().numpy()
 	pred_score = list(prediction[0]['scores'].cpu().detach().numpy())
 	try:
-		score_thresh = int(list(map(lambda i: i < 0.5, pred_score)).index(True))
+		score_thresh = int(list(map(lambda i: i < threshold, pred_score)).index(True))
 		boxes = boxes[:score_thresh]
 	except ValueError:
 		pass
@@ -85,10 +86,10 @@ def select_boxes(prediction) -> np.ndarray:
 def pair_boxes(gt_boxes, pred_boxes):
 	"""
 	Appair ground truth and predicted boxes 1-1 using Hungarian algorithm
-	:param gt_boxes: array
+	:param gt_boxes: array of real boxes
 	:type gt_boxes: bytearray
-	:param pred_boxes:
-	:type pred_boxes:
+	:param pred_boxes:array of predicted boxes
+	:type pred_boxes:bytearray
 	:return: indexes of ground truth and predicted boxes appaired
 	:rtype: array, array
 	"""
@@ -98,22 +99,23 @@ def pair_boxes(gt_boxes, pred_boxes):
 	iou = pd.DataFrame(iou, index=list(gt_index), columns=list(pred_index))
 	iou_NoUnmatched = iou.loc[iou.sum(axis=1) > 0, iou.sum(axis=0) > 0]
 	row_ind, col_ind = linear_sum_assignment(1 - iou_NoUnmatched.values)
-	return row_ind, col_ind
+	return row_ind, col_ind, iou_NoUnmatched
 
 
 def plot_images(pred_boxes, gt_boxes, im, im_bis):
 	"""
-
-	:param pred_boxes:
-	:type pred_boxes:
-	:param gt_boxes:
-	:type gt_boxes:
-	:param im:
-	:type im:
-	:param im_bis:
-	:type im_bis:
-	:return: cv2 plot of stacked images ground truth and predicted images
-	:rtype:
+	Plots a concatenation of predicted and ground truth boxes on the image on respectively the left and the right .
+	Ground truth boxes are in green while predicted boxes are in red
+	:param pred_boxes: array of predicted boxes
+	:type pred_boxes:bytearray
+	:param gt_boxes:array of ground truth boxes
+	:type gt_boxes:bytearray
+	:param im:image
+	:type im:bytearray
+	:param im_bis:copy the image
+	:type im_bis:bytearray
+	:return: none - cv2 plot of stacked images ground truth and predicted images
+	:rtype:none
 	"""
 	for [startX, startY, endX, endY] in pred_boxes:
 		cv2.rectangle(im_bis, (startX, startY), (endX, endY), (0, 0, 255), 2)
@@ -130,13 +132,13 @@ def plot_images(pred_boxes, gt_boxes, im, im_bis):
 
 def predict(args, plot=False):
 	"""
-
-	:param args:
-	:type args:
-	:param plot:
-	:type plot:
+	PRediction loop for localization on given test directory
+	:param args:test directory
+	:type args:str
+	:param plot:boolean to plot or not the images
+	:type plot:bool
 	:return: prediction loop over test set
-	:rtype:
+	:rtype:none
 	"""
 
 	test_boxes = json.load(open(config.ANNOTS_TEST_PATH))
@@ -148,6 +150,7 @@ def predict(args, plot=False):
 	all_tp = []
 	all_fn = []
 	all_fp = []
+	all_iou = []
 
 	for imagePath in tqdm(imagePaths):
 		image = cv2.imread(os.path.join(args['input'], imagePath))
@@ -159,20 +162,23 @@ def predict(args, plot=False):
 		pred_boxes = select_boxes(prediction)
 
 		gt_boxes = test_boxes[imagePath]
+		if (gt_boxes[0][2]-gt_boxes[0][0])/256. < 0.5:
 
-		row_ind, col_ind = pair_boxes(gt_boxes, pred_boxes)
+			row_ind, col_ind, iou_mat = pair_boxes(gt_boxes, pred_boxes)
+			median_iou = np.median(iou_mat)
+			all_iou.append(median_iou)
 
-		fn = len(gt_boxes)-len(row_ind)
-		tp = len(row_ind)
-		fp = len(pred_boxes)-len(col_ind)
+			fn = len(gt_boxes)-len(row_ind)
+			tp = len(row_ind)
+			fp = len(pred_boxes)-len(col_ind)
 
-		all_tp.append(tp)
-		all_fn.append(fn)
-		all_fp.append(fp)
+			all_tp.append(tp)
+			all_fn.append(fn)
+			all_fp.append(fp)
 
-		(h, w) = orig.shape[:2]
-		if plot:
-			plot_images(pred_boxes, gt_boxes, orig, orig_bis)
+			(h, w) = orig.shape[:2]
+			if plot:
+				plot_images(pred_boxes, gt_boxes, orig, orig_bis)
 
 	sum_tp = np.sum(all_tp)
 	sum_fn = np.sum(all_fn)
@@ -183,6 +189,9 @@ def predict(args, plot=False):
 	logger.info("precision is {}".format(round(precision, 3)))
 	logger.info("recall is {}".format(round(recall, 3)))
 	logger.info("F1 score is {}".format(round(f1, 3)))
+	plt.figure()
+	plt.hist(all_iou)
+	plt.show()
 
 
 if __name__ == "__main__":

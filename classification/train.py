@@ -1,9 +1,7 @@
-from sklearn import svm
 from sklearn.model_selection import StratifiedKFold
 from classif_utils.utils import *
 import pickle
 import sys
-from typing import List
 import logging
 import os
 from classif_utils import config
@@ -13,45 +11,9 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def load_images(image_dir: str, train_dir: str) -> List[float]:
-    """
-    Loads images from a given directory following train/test images structure
-    :param image_dir: path to image dir
-    :type image_dir: str
-    :return: list of image hashes within directory
-    :rtype: List[float]
-    """
-    dhashes = {}
-    for sub_dir in os.listdir(image_dir):
-        image_list = os.listdir(os.path.join(train_dir, sub_dir))
-
-        for image in tqdm(image_list):
-            image_path = os.path.join(image_dir, sub_dir, image)
-            im = cv2.imread(image_path)
-            dhashes[image] = ColorImageFeatures().dhash(im)
-    return dhashes
-
-
-def duplicated_ids(directory: str) -> List[str]:
-    """
-    Selects duplicates ids of an dataframe by computes hash values of the images
-    :param directory: path to image directory
-    :type directory:str
-    :return: list of duplicated ids
-    :rtype:bytearray
-    """
-    train_hashes = load_images(directory, config.IMAGES_PATH)
-    dictB = {}
-    for key, value in train_hashes.items():
-        dictB.setdefault(value, set()).add(key)
-    res = list(filter(lambda x: len(x) > 1, dictB.values()))
-    ids_to_remove = [list(im_dict)[0] for im_dict in res]
-    return ids_to_remove
-
-
 def train(folds=5):
     """
-    Training loop 
+    Training loop using k fold cross validation - we used k=5
     :return: none, trained model saved as pickle file locally under config filemae
     :rtype: none
     """

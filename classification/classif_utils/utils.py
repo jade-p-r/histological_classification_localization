@@ -12,7 +12,7 @@ import skimage.measure
 import skimage.color
 from typing import List
 from .models import ColorImageFeatures
-
+from . import config
 
 # create stain to color map
 stainColorMap = {
@@ -31,6 +31,25 @@ stain_3 = 'null'          # set to null of input contains only two stains
 W = np.array([stainColorMap[stain_1],
               stainColorMap[stain_2],
               stainColorMap[stain_3]]).T
+
+
+def load_images(image_dir: str, train_dir: str) -> List[float]:
+    """
+    Loads images from a given directory following train/test images structure
+    :param image_dir: path to image dir
+    :type image_dir: str
+    :return: list of image hashes within directory
+    :rtype: List[float]
+    """
+    dhashes = {}
+    for sub_dir in os.listdir(image_dir):
+        image_list = os.listdir(os.path.join(train_dir, sub_dir))
+
+        for image in tqdm(image_list):
+            image_path = os.path.join(image_dir, sub_dir, image)
+            im = cv2.imread(image_path)
+            dhashes[image] = ColorImageFeatures().dhash(im)
+    return dhashes
 
 
 def define_ref_im_attributes(dir, classes, image_name):
@@ -114,6 +133,23 @@ def preprocessing(df: pd.DataFrame) -> np.ndarray:
     scaler = StandardScaler()
     flat_X = scaler.fit_transform(flat_X)
     return flat_X
+
+
+def duplicated_ids(directory: str) -> List[str]:
+    """
+    Selects duplicates ids of an dataframe by computes hash values of the images
+    :param directory: path to image directory
+    :type directory:str
+    :return: list of duplicated ids
+    :rtype:bytearray
+    """
+    train_hashes = load_images(directory, config.IMAGES_PATH)
+    dictB = {}
+    for key, value in train_hashes.items():
+        dictB.setdefault(value, set()).add(key)
+    res = list(filter(lambda x: len(x) > 1, dictB.values()))
+    ids_to_remove = [list(im_dict)[0] for im_dict in res]
+    return ids_to_remove
 
 
 def target(df: pd.DataFrame) -> np.ndarray:
