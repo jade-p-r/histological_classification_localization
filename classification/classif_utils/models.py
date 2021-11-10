@@ -18,6 +18,9 @@ from sklearn.metrics import accuracy_score
 
 
 class Model:
+    """
+    Model class that allows to train with different models
+    """
     def __init__(self, model_type):
         if model_type == 'svc':
             self.model = SVC(kernel='linear')
@@ -37,6 +40,9 @@ class Model:
 
 
 class ColorImageFeatures:
+    """
+    Class of color - 3 channels - image features related to image texture or content to train the model with
+    """
     def __init__(self, image):
         self.image = image
         self.colors = ("blue", "green", "red")
@@ -44,9 +50,9 @@ class ColorImageFeatures:
 
     def variance_of_laplacian(self) -> float:
         """
+        Calculates the variance of the laplacian of the image, an indicator of blurriness in the image
+        Some False Negatives were identified as blurry
 
-        :param image: input image
-        :type image: image array BGR
         :return: laplacian of the input image
         :rtype: float
         """
@@ -54,11 +60,10 @@ class ColorImageFeatures:
 
     def fft_std(self) -> float:
         """
-
-        :param im:
-        :type im:
-        :return:
-        :rtype:
+        Calculates the std - indicator of variance - of the Fast Fourier Transform of the image on one of the axis characterizing blank or nearly blank images
+        Some FN were identified as blank or nearly blank
+        :return: fft std
+        :rtype:float
         """
         test = np.fft.fft2(self.image[:, :, 2])
         ftest = np.fft.fftshift(test)
@@ -67,11 +72,9 @@ class ColorImageFeatures:
 
     def count_nuclei_watershed(self):
         """
-
-        :param im:
-        :type im:
-        :return:
-        :rtype:
+        Calculated two methods - one being the filter of the other - of the number of nuclei of the image using watershed segmentation
+        :return: number of nuclei
+        :rtype: int
         """
 
         imgray = self.image[:, :, 0]
@@ -108,8 +111,8 @@ class ColorImageFeatures:
         # Now, mark the region of unknown with zero
         markers[unknown == 255] = 0
 
-        markers = cv2.watershed(im, markers)
-        im[markers == -1] = [255, 0, 0]
+        markers = cv2.watershed(self.image, markers)
+        self.image[markers == -1] = [255, 0, 0]
         markers1 = markers.astype(np.uint8)
         ret, m2 = cv2.threshold(markers1, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
         contours, hierarchy = cv2.findContours(m2, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
@@ -123,11 +126,9 @@ class ColorImageFeatures:
 
     def count_nuclei_stains(self) -> float:
         """
-
-        :param im_stains:
-        :type im_stains:
-        :return:
-        :rtype:
+        Calculated the number of nuclei of the image using stain image and clustering segmentation
+        :return: number of nuclei
+        :rtype: int
         """
         # get nuclei/hematoxylin channel
         im_nuclei_stain = self.stain_im()[:, :, 0]
@@ -166,39 +167,64 @@ class ColorImageFeatures:
 
     def differences(self):
         """
-
-        :param im:
-        :type im:
-        :return: differences between channels / colors of the image
-        :rtype:
+        Calculates the difference between two channels of the image
+        :return: Two single channel images being  differences between channels / colors of the image
+        :rtype: array, array
         """
         diff1 = self.image[:, :, 1] - self.image[:, :, 0]
         diff2 = self.image[:, :, 2] - self.image[:, :, 0]
         return diff1, diff2
 
     def stain_im(self, mean_ref, std_ref, W):
+        """
+        Returns the transform of the image in the stains space using HistomicsTK library considering an image of reference
+        :param mean_ref: reference image mean
+        :type mean_ref: float
+        :param std_ref: reference umage std
+        :type std_ref: float
+        :param W: stain matrix
+        :type W: bytearray
+        :return: stain image
+        :rtype: array
+        """
         im_nmzd = htk.preprocessing.color_normalization.reinhard(self.image, mean_ref, std_ref)
         im_stains = htk.preprocessing.color_deconvolution.color_deconvolution(im_nmzd, W).Stains
         return im_stains
 
     def histogram(self, channel_id):
         """
-
-        :param im:
-        :type im:
-        :param image_dic:
-        :type image_dic:
-        :param im_name:
-        :type im_name:
-        :return:
-        :rtype:
+        Calculates the histogram of the image on the given channel
+        :return: histogram
+        :rtype:bytearray
         """
         histogram, bin_edges = np.histogram(
             self.image[:, :, channel_id], bins=256, range=(0, 256)
         )
         return histogram
 
+    def dhash(self, hashSize=8):
+        """
+        Computes the hash value for a given image
+        :param hashSize: size of the hash
+        :type hashSize:int
+        :return:hash
+        :rtype:int
+        """
+        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+        resized = cv2.resize(gray, (hashSize + 1, hashSize))
+        diff = resized[:, 1:] > resized[:, :-1]
+        return sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
+
     def training_features(self, features_list, features_dict):
+        """
+        Training features calculation given a features list . Appends a dictionary with selected featuresa dn return the dictionary
+        :param features_list: features list
+        :type features_list: list
+        :param features_dict: features dict
+        :type features_dict: dict
+        :return: features dictionary
+        :rtype: dict
+        """
         if 'hist' in features_list:
             for channel_id, c in zip(self.channel_ids, self.colors):
                 features_dict['hist_' + str(c)] = self.histogram(channel_id)

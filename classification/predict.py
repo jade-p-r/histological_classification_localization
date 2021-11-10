@@ -11,9 +11,9 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 
 def load_model(filename: np.ndarray):
     """
-
-    :param filename:
-    :type filename:
+    loads model from a filename
+    :param filename: filename
+    :type filename:str
     :return:
     :rtype:
     """
@@ -23,7 +23,7 @@ def load_model(filename: np.ndarray):
 
 def im_class(nuclei):
     """
-
+    returns the associated class of an image
     :param nuclei:
     :type nuclei:
     :return:
@@ -37,7 +37,7 @@ def im_class(nuclei):
 
 def plot_predictions(df: pd.DataFrame) -> None:
     """
-
+    Plots the images from predetermined image name column within a given dataframe
     :param df:
     :type df:
     :return:
@@ -54,7 +54,7 @@ def plot_predictions(df: pd.DataFrame) -> None:
 
 def predict():
     """
-
+    prediction loop on the test set
     :return: prediction loop over directory of test images
     :rtype:
     """

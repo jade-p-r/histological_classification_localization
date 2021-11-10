@@ -84,7 +84,7 @@ def build_features(features_list: List, df: pd.DataFrame, classes: List, dir: st
 
 def select_correlated_features(df: pd.DataFrame) -> List[int]:
     """
-
+    Selects the correlated features of a given dataframe
     :param df: dataframe
     :type df: pd.dataframe
     :return: list of indexes to drop
@@ -99,11 +99,11 @@ def select_correlated_features(df: pd.DataFrame) -> List[int]:
 
 def preprocessing(df: pd.DataFrame) -> np.ndarray:
     """
-
+    Completes the preprocessing of a features dataframe to return standardized features ready for training
     :param df: dataframe of numerical features
-    :type df:
+    :type df: dataframe
     :return: scaled and reshaped array of features
-    :rtype:
+    :rtype: array
     """
     hist_cols = [col for col in df.columns if 'hist_' in col]
     X = df[hist_cols]
@@ -118,11 +118,11 @@ def preprocessing(df: pd.DataFrame) -> np.ndarray:
 
 def target(df: pd.DataFrame) -> np.ndarray:
     """
-
+    Selects target variable array and convert to float for training
     :param df: dataframe for prediction
-    :type df:
+    :type df:dataframe
     :return: y array for target
-    :rtype:
+    :rtype: array
     """
 
     df.nuclei = df.nuclei.astype(int)
@@ -133,11 +133,11 @@ def target(df: pd.DataFrame) -> np.ndarray:
 
 def precision_recall(df):
     """
-
+    Computes preicison metrics for evaluation of precision and recall and identification of false postivies and false negatives
     :param df: dataframe with predictions
-    :type df:
+    :type df: dataframe
     :return: precision, recall and each sub dataframe for each categroy
-    :rtype:
+    :rtype:arrays
     """
     fp = df.loc[(df['nuclei'] == 0) & (df.predictions == 1.0)]
     fn = df.loc[(df['nuclei'] == 1) & (df.predictions == 0.0)]

@@ -13,25 +13,9 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def dhash(image, hashSize=8):
-    """
-
-    :param image:
-    :type image:
-    :param hashSize:
-    :type hashSize:
-    :return:
-    :rtype:
-    """
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    resized = cv2.resize(gray, (hashSize + 1, hashSize))
-    diff = resized[:, 1:] > resized[:, :-1]
-    return sum([2 ** i for (i, v) in enumerate(diff.flatten()) if v])
-
-
 def load_images(image_dir: str, train_dir: str) -> List[float]:
     """
-
+    Loads images from a given directory following train/test images structure
     :param image_dir: path to image dir
     :type image_dir: str
     :return: list of image hashes within directory
@@ -44,17 +28,17 @@ def load_images(image_dir: str, train_dir: str) -> List[float]:
         for image in tqdm(image_list):
             image_path = os.path.join(image_dir, sub_dir, image)
             im = cv2.imread(image_path)
-            dhashes[image] = dhash(im)
+            dhashes[image] = ColorImageFeatures().dhash(im)
     return dhashes
 
 
 def duplicated_ids(directory: str) -> List[str]:
     """
-
-    :param directory:
-    :type directory:
+    Selects duplicates ids of an dataframe by computes hash values of the images
+    :param directory: path to image directory
+    :type directory:str
     :return: list of duplicated ids
-    :rtype:
+    :rtype:bytearray
     """
     train_hashes = load_images(directory, config.IMAGES_PATH)
     dictB = {}
@@ -67,7 +51,7 @@ def duplicated_ids(directory: str) -> List[str]:
 
 def train(folds=5):
     """
-
+    Training loop 
     :return: none, trained model saved as pickle file locally under config filemae
     :rtype: none
     """
