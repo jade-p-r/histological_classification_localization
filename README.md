@@ -1,6 +1,5 @@
-# Submission for Primaa Technical Interview - Jade Perdereau
-
-This repository gathers my work for the two tasks given for the technical interview at Primaa.
+# Histology : Nuclei classification and localization 
+This project gathers the work around a custom project on nuclei classification adn detection on histological images.
 
 
 ## Installation
